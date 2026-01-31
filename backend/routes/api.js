@@ -211,4 +211,73 @@ router.delete('/queue/:id', (req, res) => {
     }
 });
 
+// DELETE /api/patients/:id - Unified Purge (Queue or Admitted)
+router.delete('/patients/:id', (req, res) => {
+    const { id } = req.params;
+    const requester = req.user ? req.user.username : 'Unknown';
+
+    // Normalize input ID
+    const normalizedId = String(id).trim().toLowerCase();
+    console.log(`[PURGE] Request from ${requester} for patient: "${id}" (Normalized: "${normalizedId}")`);
+
+    try {
+        // 1. Try to remove from queue/registry first
+        console.log(`[PURGE] Step 1: Searching for ${normalizedId} in ER Queue...`);
+        const removedFromQueue = patientService.removePatient(id); // removePatient now handles normalization internally
+
+        if (removedFromQueue) {
+            console.log(`[PURGE] SUCCESS: Patient ${normalizedId} removed from queue/registry.`);
+            return res.json({ success: true, message: 'Patient removed from ER Queue' });
+        }
+
+        // 2. If not in queue, check if they are admitted to a bed
+        console.log(`[PURGE] Step 2: Patient ${normalizedId} not in queue. Scanning ward beds...`);
+
+        const allBeds = bedService.getAllBeds();
+        const admittedBed = allBeds.find(b => {
+            if (!b.patient) return false;
+            return String(b.patient.id).trim().toLowerCase() === normalizedId;
+        });
+
+        if (admittedBed) {
+            console.log(`[PURGE] SUCCESS: Patient ${normalizedId} found in bed ${admittedBed.id}. Executing force discharge...`);
+            bedService.dischargePatient(admittedBed.id);
+            return res.json({ success: true, message: 'Patient discharged and record purged' });
+        }
+
+        // 3. Fallback: Not found anywhere
+        console.warn(`[PURGE] FAIL: Patient ${normalizedId} not found in active records.`);
+        return res.status(404).json({
+            error: 'Patient not found',
+            details: `ID ${id} was not matched in the ER Registry or any active Bed.`
+        });
+
+    } catch (err) {
+        console.error(`[PURGE] CRITICAL FAILURE for ${id}:`, err);
+        res.status(500).json({
+            error: 'Internal Protocol Error',
+            message: err.message
+        });
+    }
+});
+
+// GET /api/system/audit - Internal state dump for troubleshooting
+router.get('/system/audit', (req, res) => {
+    try {
+        const queueIds = patientService.getSortedQueue().map(p => ({ id: p.id, name: p.name, type: 'Queue' }));
+        const bedIds = bedService.getAllBeds()
+            .filter(b => b.patient)
+            .map(b => ({ id: b.patient.id, name: b.patient.name, bed: b.id, type: 'Bed' }));
+
+        res.json({
+            timestamp: new Date().toISOString(),
+            queue: queueIds,
+            beds: bedIds,
+            totalActive: queueIds.length + bedIds.length
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

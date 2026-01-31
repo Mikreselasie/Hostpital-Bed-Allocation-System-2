@@ -31,9 +31,17 @@ function initializeSchema() {
             name TEXT NOT NULL,
             triageLevel INTEGER NOT NULL,
             condition TEXT NOT NULL,
-            joinedAt INTEGER NOT NULL
+            joinedAt INTEGER NOT NULL,
+            diagnosis TEXT
         )
     `);
+
+    // Ensure diagnosis column exists if table was already created
+    try {
+        db.exec("ALTER TABLE patients ADD COLUMN diagnosis TEXT");
+    } catch (e) {
+        // Column likely already exists
+    }
 
     console.log('Database schema initialized');
 }
@@ -162,10 +170,10 @@ module.exports = {
 
     insertPatient(patient) {
         const stmt = db.prepare(`
-            INSERT INTO patients (id, name, triageLevel, condition, joinedAt)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO patients (id, name, triageLevel, condition, joinedAt, diagnosis)
+            VALUES (?, ?, ?, ?, ?, ?)
         `);
-        stmt.run(patient.id, patient.name, patient.triageLevel, patient.condition, patient.joinedAt);
+        stmt.run(patient.id, patient.name, patient.triageLevel, patient.condition, patient.joinedAt, patient.diagnosis || null);
     },
 
     deletePatient(id) {
