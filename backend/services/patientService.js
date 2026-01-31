@@ -90,18 +90,33 @@ function addPatient(patientData) {
  * Removes a patient from the queue (and system).
  */
 function removePatient(patientId) {
-    const pIndex = global.patients.findIndex(p => p.id === patientId);
-    if (pIndex === -1) return false;
+    if (!patientId) return false;
 
+    // Normalize target ID for robust comparison
+    const targetId = String(patientId).trim().toLowerCase();
+
+    const pIndex = global.patients.findIndex(p =>
+        String(p.id).trim().toLowerCase() === targetId
+    );
+
+    if (pIndex === -1) {
+        console.log(`[PATIENT_SERVICE] Patient ${targetId} not found in global registry.`);
+        return false;
+    }
+
+    const patient = global.patients[pIndex];
     global.patients.splice(pIndex, 1);
 
-    const qIndex = global.patientQueue.findIndex(p => p.id === patientId);
+    const qIndex = global.patientQueue.findIndex(p =>
+        String(p.id).trim().toLowerCase() === targetId
+    );
+
     if (qIndex !== -1) {
         global.patientQueue.splice(qIndex, 1);
     }
 
     // Persist to database
-    deletePatient(patientId);
+    deletePatient(patient.id);
 
     if (global.io) {
         global.io.emit('queueUpdate', getSortedQueue());

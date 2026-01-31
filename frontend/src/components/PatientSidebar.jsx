@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeftRight, User, AlertTriangle, MousePointerClick, Plus, Trash2, Clock, ArrowUpDown, UserPlus } from 'lucide-react';
+import { Activity, ArrowLeftRight, User, AlertTriangle, MousePointerClick, Plus, Trash2, Clock, ArrowUpDown, UserPlus, Sparkles, CheckCircle2 } from 'lucide-react';
 import AssignmentModal from './AssignmentModal';
 import AddPatientModal from './AddPatientModal';
 import clsx from 'clsx';
@@ -9,82 +9,86 @@ export default function PatientSidebar({ queue, beds, onAssign, onManualAssign, 
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [sortBy, setSortBy] = useState('priority'); // 'priority', 'name', 'severity'
+    const [sortBy, setSortBy] = useState('priority');
 
     const isDoctor = userRole === 'Doctor';
-    const isNurse = userRole === 'Nurse';
 
-    // Sort queue based on selected criteria
     const sortedQueue = useMemo(() => {
-        const queueCopy = [...queue];
-
-        if (sortBy === 'name') {
-            return queueCopy.sort((a, b) => a.name.localeCompare(b.name));
-        } else if (sortBy === 'severity') {
-            return queueCopy.sort((a, b) => a.triageLevel - b.triageLevel);
-        } else {
-            // Default: priority (already sorted by backend)
-            return queueCopy;
-        }
+        const safeQueue = Array.isArray(queue) ? queue : [];
+        const queueCopy = [...safeQueue];
+        if (sortBy === 'name') return queueCopy.sort((a, b) => a.name.localeCompare(b.name));
+        if (sortBy === 'severity') return queueCopy.sort((a, b) => a.triageLevel - b.triageLevel);
+        return queueCopy;
     }, [queue, sortBy]);
 
     const handleManualClick = (patient) => {
-        if (!isDoctor) {
-            alert("Only Doctors can authorize bed assignments.");
-            return;
-        }
+        if (!isDoctor) return alert("Only Doctors can authorize bed assignments.");
         setSelectedPatient(patient);
         setIsAssignmentModalOpen(true);
     };
 
     const handleSmartClick = (patient) => {
-        if (!isDoctor) {
-            alert("Only Doctors can authorize bed assignments.");
-            return;
-        }
+        if (!isDoctor) return alert("Only Doctors can authorize bed assignments.");
         onAssign(patient);
     };
 
-    const handleAssignConfirm = (patient, bedId) => {
-        onManualAssign(patient, bedId);
-    };
-
     return (
-        <div className="w-80 bg-white border-l border-slate-200 p-6 flex flex-col h-full shadow-xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className="w-[340px] bg-white border-l border-slate-200 p-8 flex flex-col h-full shadow-2xl relative z-10">
+            {/* Header: SaaS 2.0 Style */}
+            <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h2 className="font-bold text-slate-800 text-lg">ER Queue</h2>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Admissions Manager</p>
+                    <div className="flex items-center gap-2 mb-1">
+                        <Sparkles size={14} className="text-green-500" />
+                        <h2 className="font-bold text-slate-900 text-lg tracking-tight">ER Admissions</h2>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em]">Triage Registry</p>
                 </div>
                 <div className="flex gap-2">
-                    <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-lg text-xs font-bold border border-red-100">{queue.length}</span>
                     <button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="bg-blue-600 text-white p-2 rounded-xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95"
-                        title="Add Patient to Queue"
+                        className="bg-green-600 text-white p-2.5 rounded-2xl shadow-lg shadow-green-100 hover:bg-green-700 transition-all active:scale-90"
+                        title="Quick Registration"
                     >
-                        <UserPlus size={18} />
+                        <UserPlus size={20} />
                     </button>
                 </div>
             </div>
 
-            {/* Sort Controls */}
-            <div className="mb-4 flex items-center gap-2 pb-3 border-b border-slate-100">
-                <ArrowUpDown size={14} className="text-slate-400" />
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Sort:</span>
-                <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                >
-                    <option value="priority">Priority Logic</option>
-                    <option value="name">Patient Name</option>
-                    <option value="severity">Triage Severity</option>
-                </select>
+            {/* Live Queue Counter */}
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="bg-green-100 text-green-600 p-2 rounded-xl">
+                        <User size={16} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Queue Density</p>
+                        <p className="text-sm font-bold text-slate-800">{queue.length} Patients Waiting</p>
+                    </div>
+                </div>
+                <div className={clsx("w-2 h-2 rounded-full", queue.length > 5 ? "bg-rose-500 animate-pulse" : "bg-emerald-500")} />
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
-                <AnimatePresence>
+            {/* Sort Controls: Clean & Discrete */}
+            <div className="mb-6 flex items-center gap-2">
+                <div className="flex-1 h-px bg-slate-100" />
+                <div className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-200 rounded-full">
+                    <ArrowUpDown size={12} className="text-slate-400" />
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-transparent outline-none cursor-pointer"
+                    >
+                        <option value="priority">Priority</option>
+                        <option value="name">A-Z Name</option>
+                        <option value="severity">Severity</option>
+                    </select>
+                </div>
+                <div className="flex-1 h-px bg-slate-100" />
+            </div>
+
+            {/* Scrollable Queue Area */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 -mr-1 scrollbar-thin">
+                <AnimatePresence mode="popLayout">
                     {sortedQueue.map((patient) => (
                         <PatientCard
                             key={patient.id}
@@ -96,37 +100,47 @@ export default function PatientSidebar({ queue, beds, onAssign, onManualAssign, 
                         />
                     ))}
                 </AnimatePresence>
+
+                {/* Premium Empty State */}
                 {queue.length === 0 && (
-                    <div className="text-center py-16 text-slate-300 flex flex-col items-center gap-4">
-                        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                            <User size={32} className="opacity-10" />
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-center py-20 px-4 flex flex-col items-center gap-6"
+                    >
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-green-50 rounded-full blur-2xl scale-150 opacity-50" />
+                            <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl relative z-10">
+                                <CheckCircle2 size={48} className="text-emerald-500" />
+                            </div>
                         </div>
-                        <p className="text-xs font-bold uppercase tracking-widest italic">No Patients Pending</p>
-                    </div>
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-800 tracking-tight">All caught up!</h3>
+                            <p className="text-xs font-medium text-slate-400 mt-2 leading-relaxed max-w-[180px] mx-auto italic">
+                                The emergency queue is currently empty. Great job, team!
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="mt-4 px-6 py-3 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-2xl hover:border-green-200 hover:text-green-600 transition-all active:scale-95 shadow-subtle"
+                        >
+                            Register New Patient
+                        </button>
+                    </motion.div>
                 )}
             </div>
 
-            {/* Status Footer */}
-            <div className="mt-4 pt-4 border-t border-slate-100">
-                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    Live System Active
+            {/* Sticky Footer Action */}
+            <div className="mt-6 pt-6 border-t border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] text-center mb-4">Registry Integrity Ver 1.4</p>
+                <div className="flex items-center justify-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest italic">Encrypted Bio-Sync Active</span>
                 </div>
             </div>
 
-            <AssignmentModal
-                isOpen={isAssignmentModalOpen}
-                onClose={() => setIsAssignmentModalOpen(false)}
-                patient={selectedPatient}
-                beds={beds}
-                onAssign={handleAssignConfirm}
-            />
-
-            <AddPatientModal
-                isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
-                onAdd={onAddPatient}
-            />
+            <AssignmentModal isOpen={isAssignmentModalOpen} onClose={() => setIsAssignmentModalOpen(false)} patient={selectedPatient} beds={beds} onAssign={onManualAssign} />
+            <AddPatientModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onAdd={onAddPatient} />
         </div>
     );
 }
@@ -135,9 +149,7 @@ function PatientCard({ patient, onAssign, onManualAssign, onRemove, isDoctor }) 
     const [waitTime, setWaitTime] = useState(calculateWaitTime(patient.joinedAt));
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setWaitTime(calculateWaitTime(patient.joinedAt));
-        }, 60000);
+        const interval = setInterval(() => setWaitTime(calculateWaitTime(patient.joinedAt)), 60000);
         return () => clearInterval(interval);
     }, [patient.joinedAt]);
 
@@ -146,14 +158,15 @@ function PatientCard({ patient, onAssign, onManualAssign, onRemove, isDoctor }) 
         const diff = Date.now() - new Date(joinedAt).getTime();
         const mins = Math.floor(diff / 60000);
         const hrs = Math.floor(mins / 60);
-        if (hrs > 0) return `${hrs}h ${mins % 60}m`;
-        return `${mins}m`;
+        return hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
     }
 
-    const getBadgeStyle = (level) => {
-        if (level === 1) return "bg-red-50 text-red-600 border-red-100";
-        if (level <= 3) return "bg-orange-50 text-orange-600 border-orange-100";
-        return "bg-blue-50 text-blue-600 border-blue-100";
+    const triageStyles = {
+        1: "bg-rose-50 text-rose-600 border-rose-100",
+        2: "bg-amber-50 text-amber-600 border-amber-100",
+        3: "bg-green-50 text-green-600 border-green-100",
+        4: "bg-slate-50 text-slate-600 border-slate-100",
+        5: "bg-slate-50 text-slate-400 border-slate-50"
     };
 
     return (
@@ -161,59 +174,65 @@ function PatientCard({ patient, onAssign, onManualAssign, onRemove, isDoctor }) 
             layout
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="p-4 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 transition-all shadow-sm hover:shadow-md group relative overflow-hidden"
+            exit={{ opacity: 0, x: -20, scale: 0.95 }}
+            className="p-5 rounded-3xl border border-slate-100 bg-white hover:border-green-200 transition-all shadow-subtle hover:shadow-xl hover:shadow-indigo-50/50 group relative overflow-hidden"
         >
-            <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-3">
-                    <div className={clsx("w-1 h-8 rounded-full",
-                        patient.triageLevel === 1 ? "bg-red-500" : patient.triageLevel <= 3 ? "bg-orange-400" : "bg-blue-400"
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-4">
+                    <div className={clsx("w-1.5 h-10 rounded-full",
+                        patient.triageLevel === 1 ? "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]" :
+                            patient.triageLevel <= 3 ? "bg-amber-400" : "bg-indigo-400"
                     )} />
                     <div>
-                        <span className="font-bold text-slate-800 block text-sm">{patient.name}</span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                            <Clock size={10} className="text-slate-400" />
-                            <span className="text-[10px] text-slate-400 font-bold tracking-tight">{waitTime} waiting</span>
+                        <span className="font-bold text-slate-900 block text-sm tracking-tight">{patient.name}</span>
+                        {patient.diagnosis && (
+                            <p className="text-[9px] font-black text-green-600 uppercase tracking-widest mt-1 flex items-center gap-1">
+                                <Activity size={10} strokeWidth={3} /> {patient.diagnosis}
+                            </p>
+                        )}
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                            <Clock size={12} className="text-slate-300" />
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{waitTime} in queue</span>
                         </div>
                     </div>
                 </div>
 
-                <div className={clsx("px-2 py-0.5 rounded-lg text-[10px] font-bold border uppercase tracking-wider", getBadgeStyle(patient.triageLevel))}>
+                <div className={clsx("px-2.5 py-1 rounded-xl text-[10px] font-bold border uppercase tracking-wider", triageStyles[patient.triageLevel])}>
                     L{patient.triageLevel}
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 mt-4">
+            <div className="grid grid-cols-2 gap-2 mt-6">
                 <button
                     onClick={onAssign}
                     className={clsx(
-                        "py-2 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1.5",
+                        "py-3 rounded-2xl text-[10px] font-bold transition-all flex items-center justify-center gap-2",
                         isDoctor
-                            ? "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                            ? "bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white"
                             : "bg-slate-50 text-slate-300 cursor-not-allowed"
                     )}
                 >
-                    <ArrowLeftRight size={12} />
-                    Auto
+                    <Activity size={12} />
+                    Auto-Assign
                 </button>
                 <button
                     onClick={onManualAssign}
                     className={clsx(
-                        "py-2 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1.5",
+                        "py-3 rounded-2xl text-[10px] font-bold transition-all flex items-center justify-center gap-2",
                         isDoctor
-                            ? "bg-slate-800 text-white hover:bg-slate-900"
+                            ? "bg-slate-900 text-white hover:bg-slate-800"
                             : "bg-slate-50 text-slate-300 cursor-not-allowed"
                     )}
                 >
                     <MousePointerClick size={12} />
-                    Assign
+                    Manual
                 </button>
             </div>
 
             {isDoctor && (
                 <button
                     onClick={onRemove}
-                    className="absolute top-2 right-2 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    className="absolute top-3 right-3 p-2 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                     title="Remove from Queue"
                 >
                     <Trash2 size={14} />

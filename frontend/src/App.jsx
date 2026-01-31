@@ -16,7 +16,16 @@ function App() {
   const [queue, setQueue] = useState([]);
   const [socket, setSocket] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('user');
+      if (!savedUser || savedUser === 'undefined') return null;
+      return JSON.parse(savedUser);
+    } catch (e) {
+      console.error("Failed to parse user from localStorage", e);
+      return null;
+    }
+  });
 
   // Navigation State
   const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' or 'ward'
@@ -54,18 +63,30 @@ function App() {
     // Fetch Data
     fetch(`${API_URL}/beds`, { headers })
       .then(res => {
-        if (res.status === 401) return handleLogout();
+        if (res.status === 401 || res.status === 403) return handleLogout();
         return res.json();
       })
-      .then(data => data && setBeds(data))
+      .then(data => {
+        if (Array.isArray(data)) {
+          setBeds(data);
+        } else if (data && data.error) {
+          console.error("API Error (Beds):", data.error);
+        }
+      })
       .catch(err => console.error("Failed to fetch beds", err));
 
     fetch(`${API_URL}/queue`, { headers })
       .then(res => {
-        if (res.status === 401) return handleLogout();
+        if (res.status === 401 || res.status === 403) return handleLogout();
         return res.json();
       })
-      .then(data => data && setQueue(data))
+      .then(data => {
+        if (Array.isArray(data)) {
+          setQueue(data);
+        } else if (data && data.error) {
+          console.error("API Error (Queue):", data.error);
+        }
+      })
       .catch(err => console.error("Failed to fetch queue", err));
 
     return () => newSocket.close();
@@ -196,8 +217,11 @@ function App() {
     }
   };
 
-  const handleTransfer = async (sourceId, targetId) => {
+  const handleTransfer = async (source, target) => {
     try {
+      const sourceId = typeof source === 'object' ? source.id : source;
+      const targetId = typeof target === 'object' ? target.id : target;
+
       const res = await authenticatedFetch(`${API_URL}/beds/transfer`, {
         method: 'POST',
         body: JSON.stringify({ sourceBedId: sourceId, targetBedId: targetId })
@@ -221,7 +245,7 @@ function App() {
   }
 
   return (
-    <div className="flex bg-medical-50 h-screen overflow-hidden font-sans">
+    <div className="flex w-full bg-slate-50 h-screen overflow-hidden font-sans">
       <DashboardShell
         currentView={currentView}
         onViewChange={setCurrentView}
@@ -231,7 +255,7 @@ function App() {
         {currentView === 'dashboard' ? (
           <>
             <StatsCards beds={beds} queue={queue} />
-            <div className="flex gap-6 relative">
+            <div className="flex gap-6 relative w-full flex-1">
               <BedGrid
                 beds={beds}
                 queue={queue}
