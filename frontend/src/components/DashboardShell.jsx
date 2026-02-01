@@ -24,7 +24,7 @@ export default function DashboardShell({ children, currentView, onViewChange, us
                     <div className="bg-green-600 p-2 rounded-xl shadow-lg shadow-green-900/40">
                         <Activity className="text-white w-6 h-6" />
                     </div>
-                    <span className="font-bold text-xl text-white tracking-tight">MedBed<span className="text-green-400">OS</span></span>
+                    <span className="font-bold text-xl text-white tracking-tight">ARAT</span>
                 </div>
 
                 {/* Primary Nav */}
